@@ -1,0 +1,812 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="renderer" content="webkit">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="驼梁地图" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <!--<img id="tulip" src="img/tuoliangditu.jpg" />-->
+    <div>
+        <canvas id="myCanvas" style="border:1px solid #d3d3d3;">
+            Your browser does not support the HTML5 canvas tag.
+        </canvas>
+        <div style="position:absolute;bottom:140px;right:10px;background-image:url(pics/b7.png);height:32px;width:32px;margin:4px;border:solid 2px #ff6a00;" onclick="ShowCenter('1')"></div>
+        <div style="position:absolute;bottom:100px;right:10px;background-image:url(pics/b2.png);height:32px;width:32px;margin:4px;border:solid 2px #ff6a00;" onclick="ShowCenter('+')"></div>
+        <div style="position:absolute;bottom:60px;right:10px;background-image:url(pics/b3.png);height:32px;width:32px;margin:4px;border:solid 2px #ff6a00;" onclick="ShowCenter('-')"></div>
+        <div style="position:absolute;bottom:20px;right:10px;background-image:url(pics/b4.png);height:32px;width:32px;margin:4px;border:solid 2px #ff6a00;" onclick="ShowCenter('')"></div>
+    </div>
+    <!--<span id="moveX"></span><br />
+    <span id="moveY"></span><br />
+    <span id="moveR"></span><br />
+    <span id="lclick"></span>-->
+    <!--<div style="text-align:center;"><button onclick="MoveNext()">上一个</button>&nbsp;&nbsp;<button onclick="MovePrve()">下一个</button></div>
+
+    <div style="text-align:center;">
+        <button onclick="SetJW()">初始化经纬</button>
+        <button>经度+</button><button>经度-</button>
+        <button>纬度+</button><button>维度-</button>
+    </div>-->
+</body>
+<script type="text/javascript" src="js/jquery.min.js"></script>
+<script src="js/layer/layer.js"></script>
+<script type="text/javascript">
+    //图片原始大小 670 909
+    //width 360 400
+    //495 163
+    //比例尺
+    var bili = 1;
+    var obili = 1;
+    var imgRen = new Image();
+    var picw = 1000;
+    var pich = 1546;
+    //手指开始移动坐标
+    var bPointX = 0;
+    var bPointY = 0;
+    //手指结束移动坐标
+    var ePointX = 0;
+    var ePointY = 0;
+    //移动之前的图片坐标
+    var cPointX = 200;
+    var cPointY = 200;
+    //当前显示的图片坐标
+    var lPointX = 0;
+    var lPointY = 0;
+    //缩放 两个手指 手指移动前
+    var sx1_1 = 0;
+    var sy1_1 = 0;
+    var sx1_2 = 0;
+    var sy1_2 = 0;
+    //手指移动后
+    var sx2_1 = 0;
+    var sy2_1 = 0;
+    var sx2_2 = 0;
+    var sy2_2 = 0;
+    //第一条线路点的数量
+    var xpnum1 = 71;
+    var xpnum2 = 58;
+    //是否在驼梁进去范围内
+    var ShowFanwei = 0;
+
+    var c = document.getElementById("myCanvas");
+    //地图
+    var img = new Image();
+    imgRen.src = 'pics/ren.png';
+    //人员定位为中心
+    var personCenter = false;
+
+    $('document').ready(function () {
+        layer.closeAll();
+
+        c = document.getElementById("myCanvas");
+        c.width = $(window).width();
+        c.height = $(window).height();
+        //$('#myCanvas').css('margin-left', '10px');
+        var ctx = c.getContext("2d");
+        //var img = document.getElementById("tulip");
+        img = new Image();
+        img.src = 'pics/daoyou2.jpg';
+        img.onload = function () {
+            //ctx.drawImage(img, cPointX * bili, cPointY * bili, c.width * bili, c.height * bili, 0, 0, c.width, c.height);
+            personCenter = true;
+            Draw();
+        };
+
+        var obj = document.getElementById('myCanvas');
+        obj.addEventListener('touchmove', function (event) {
+            // 如果这个元素的位置内只有一个手指的话
+            if (event.targetTouches.length == 1) {
+                event.preventDefault();
+                personCenter = false;
+                ePointX = event.targetTouches[0].pageX;
+                ePointY = event.targetTouches[0].pageY;
+                lPointX = parseInt(cPointX) + (parseInt(bPointX) - parseInt(ePointX));
+                lPointY = parseInt(cPointY) + (parseInt(bPointY) - parseInt(ePointY));
+                //确定边界 和 比例
+                //左边界 缩放
+                if (lPointX <= 0) lPointX = 0;
+                //上
+                if (lPointY <= 0) lPointY = 0;
+                //右
+                var maxright = parseInt(picw / bili) - parseInt(c.width);
+                //$('#lclick').text("m:" + parseInt(maxright) + ",lX:" + parseInt(lPointX) + ",cX:" + parseInt(cPointX) + ",cw:" + c.width);
+                if (lPointX >= maxright) lPointX = maxright; //下
+                //if(lPointY>=222)lPointY=222;
+                //下边界
+                var maxbottom = parseInt(pich / bili) - parseInt(c.height);
+                if (lPointY >= maxbottom) lPointY = maxbottom;
+                //$('#moveX').text('X坐标 C:' + cPointX + ',B:' + bPointX + ',E:' + ePointX + ',L:' + lPointX + ',W:' + c.width);
+                //$('#moveY').text('Y坐标 C:' + cPointY + ',B:' + bPointY + ',E:' + ePointY + ',L:' + lPointY + ',H:' + c.height);
+                //var touch = event.targetTouches[0];
+                // 把元素放在手指所在的位置
+                //alert(3);
+                Draw();
+            }
+            if (event.targetTouches.length == 2) {
+                //alert(1);
+                //两个手指进行缩放
+                sx2_1 = event.targetTouches[0].pageX;
+                sy2_1 = event.targetTouches[0].pageY;
+                sx2_2 = event.targetTouches[1].pageX;
+                sy2_2 = event.targetTouches[1].pageY;
+                //每次请求就缩放一下
+                //开始计算两个手指之间的距离是放大还是缩小  并且显示缩放后的地图
+                if (sx2_1 == 0) sx2_1 = sx1_1;
+                if (sy2_1 == 0) sy2_1 = sy1_1;
+                if (sx2_2 == 0) sx2_2 = sx1_2;
+                if (sy2_2 == 0) sy2_2 = sy1_2;
+                //alert(4);
+                var calX1 = sx1_2 - sx1_1;//手指移动前X距离 征服
+                var calY1 = sy1_2 - sy1_1;//手指移动前Y距离
+                //alert(5);
+                var cha1 = Math.pow((calX1 * calX1 + calY1 * calY1), 0.5);//手指移动前直线距离 shouwangxianfeng kankanba
+                //alert(cha1);
+                var calX2 = sx2_2 - sx2_1;//手指移动后X距离
+                var calY2 = sy2_2 - sy2_1;//手指移动后Y距离
+                var cha2 = Math.pow((calX2 * calX2 + calY2 * calY2), 0.5);
+                //alert(cha2);
+                //alert('cha1:'+cha1+",cha2:"+cha2);
+                //$('#moveX').text("Cha1:" + cha1 + ",Cha2:" + cha2);
+                //$('#moveY').text("sx1_1:" + sx1_1 + ",sy1_1:" + sy1_1 + ",sx1_2:" + sx1_2 + ",sy1_2:" + sy1_2);
+
+                bili = obili * cha1 / cha2;
+                if (bili >= 1.9) bili = 1.9;
+
+                $('#moveR').text("bili:" + bili);
+                Draw();
+            }
+        }, false);
+        obj.addEventListener('touchstart', function (event) {
+            event.preventDefault();
+            if (event.targetTouches.length == 1) {
+                bPointX = event.targetTouches[0].pageX;
+                bPointY = event.targetTouches[0].pageY;
+            }
+            if (event.targetTouches.length == 2) {
+                //alert(2);
+                sx1_1 = event.targetTouches[0].pageX;
+                sy1_1 = event.targetTouches[0].pageY;
+                sx1_2 = event.targetTouches[1].pageX;
+                sy1_2 = event.targetTouches[1].pageY;
+                personCenter = true;
+            }
+        });
+        obj.addEventListener('touchend', function (event) {
+            event.preventDefault();
+
+            //判断，点击并且移动小于10，为点击。调用用户点击方法，判断是否点击到景点
+            if (ePointX == 0) ePointX = bPointX;
+            if (ePointY == 0) ePointY = bPointY;
+            var chaX = parseInt(bPointX) - parseInt(ePointX);
+            var chaY = parseInt(bPointY) - parseInt(ePointY);
+            //alert(chaX+','+chaY);
+            if (chaX <= 10 && chaX >= -10 && chaY <= 10 && chaY >= -10) {
+                //$('#lclick').text('X:' + lPointX + ",Y:" + lPointY);
+                PClick(bPointX, bPointY, lPointX, lPointY);
+
+
+            }
+            cPointX = lPointX;
+            cPointY = lPointY;
+            //$('#end').text('E:'+cPointX);
+            bPointX = 0;
+            bPointY = 0;
+            ePointX = 0;
+            ePointY = 0;
+
+            obili = bili;//设置手指移动前比例
+            ////alert(3);
+            ////开始计算两个手指之间的距离是放大还是缩小  并且显示缩放后的地图
+            //if (sx2_1 == 0) sx2_1 = sx1_1;
+            //if (sy2_1 == 0) sy2_1 = sy1_1;
+            //if (sx2_2 == 0) sx2_2 = sx1_2;
+            //if (sy2_2 == 0) sy2_2 = sy1_2;
+            ////alert(4);
+            //var calX1 = sx1_2 - sx1_1;
+            //var calY1 = sy1_2 - sy1_1;
+            ////alert(5);
+            //var cha1 = Math.pow((calX1 * calX1 + calY1 * calY1), 0.5);
+            ////alert(cha1);
+            //var calX2 = sx2_2 - sx2_1;
+            //var calY2 = sy2_2 - sy2_1;
+            //var cha2 = Math.pow((calX2 * calX2 + calY2 * calY2), 0.5);
+            ////alert(cha2);
+            ////alert('cha1:'+cha1+",cha2:"+cha2);
+            //if (cha1 > cha2) {
+            //    //layer.msg('缩小');
+            //    bili = bili + 0.2; //比例缩小同面积绘制更多
+            //    clearCha();
+            //    Draw();
+            //}
+            //if (cha1 < cha2) {
+            //    //layer.msg('放大');
+            //    bili = bili - 0.2; //比例放大同面积绘制小
+            //    clearCha();
+            //    Draw();
+            //}
+        });
+
+
+    });
+    function clearCha() {
+        //缩放 两个手指 手指移动前
+        sx1_1 = 0;
+        sy1_1 = 0;
+        sx1_2 = 0;
+        sy1_2 = 0;
+        //手指移动后
+        sx2_1 = 0;
+        sy2_1 = 0;
+        sx2_2 = 0;
+        sy2_2 = 0; //坐标转换 玻璃
+        //坐标转化和你   定位
+    }
+    function Draw() {
+        var ctx = c.getContext("2d");
+        ShowMap(ctx);//显示地图
+
+        //AddXian(lPointX * bili, lPointY * bili);//显示线路
+        //AddRen(lPointX, lPointY, ctx);//添加人
+        ShowPerson();//显示人员
+    }
+    function ShowMap(ctx) {
+        ctx.clearRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, lPointX * bili, lPointY * bili, c.width * bili, c.height * bili, 0, 0, c.width, c.height);
+
+    }
+
+    //景点图片坐标 以及经纬  线路1、2、3 类别 景点spot 道路road  部分道路没有坐标
+    //16
+    var jsonString =
+        '[' +
+        '{"X":"387","Y":"325","Name":"原始森林","Xian":"9","order":"1","type":"spot","URL":"articlex.aspx?t=1&id=44","IMG":"pics/林海.jpg","E":"113.812604","N":"38.760322"},' +
+        '{"X":"498","Y":"340","Name":"驼梁服务区","Xian":"1","order":"63","type":"spot","URL":"articlex.aspx?t=1&id=103","IMG":"pics/游客中心改造后.JPG","E":"113.82404","N":"38.75786"},' +
+        '{"X":"620","Y":"356","Name":"阎锡山工事群","Xian":"1","order":"56","type":"spot","URL":"articlex.aspx?t=1&id=60","IMG":"pics/1阎锡山工事.jpg","E":"113.82389","N":"38.75685"},' +
+
+        '{"X":"605","Y":"292","Name":"云顶草原","Xian":"1","order":"71","type":"spot","URL":"articlex.aspx?t=1&id=49","IMG":"pics/云顶草原.jpg","E":"113.82432","N":"38.75829"},' +
+        '{"X":"635","Y":"303","Name":"驼峰","Xian":"1","order":"69","type":"spot","URL":"articlex.aspx?t=1&id=45","IMG":"pics/驼峰.jpg","E":"113.82462","N":"38.75786"},' +
+        '{"X":"393","Y":"563","Name":"红枫林","Xian":"9","order":"1","type":"spot","URL":"articlex.aspx?t=1&id=2177","IMG":"pics/松桦礼赞.jpg","E":"113.81843","N":"38.75003"},' +
+        '{"X":"409","Y":"686","Name":"翠云亭","Xian":"9","order":"1","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/翠云亭.jpg","E":"113.81616","N":"38.74689"},' +
+
+        '{"X":"343","Y":"764","Name":"龙潭瀑","Xian":"1","order":"16","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/卧龙潭.jpg","E":"113.81166","N":"38.74160"},' +
+        '{"X":"368","Y":"859","Name":"寄生树","Xian":"1","order":"11","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/寄生树.jpg","E":"113.80598","N":"38.73933"},' +
+        '{"X":"398","Y":"974","Name":"三潭飞瀑","Xian":"1","order":"6","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/三潭飞瀑02.jpg","E":"113.80338","N":"38.73873"},' +
+
+        '{"X":"665","Y":"1052","Name":"望江亭","Xian":"9","order":"1","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/飞龙瀑01.jpg","E":"113.80220","N":"38.72541"},' +
+        '{"X":"756","Y":"1054","Name":"一帆风顺","Xian":"2","order":"1","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/一帆风顺.jpg","E":"113.80801","N":"38.73023"},' +
+        '{"X":"758","Y":"937","Name":"古树三潭","Xian":"2","order":"9","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/古树三潭.jpg","E":"113.81088","N":"38.73249"},' +
+
+        '{"X":"872","Y":"859","Name":"夏日冰瀑","Xian":"2","order":"11","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/夏日冰瀑 (2).jpg","E":"113.81348","N":"38.73316"},' +
+        '{"X":"755","Y":"867","Name":"人字瀑","Xian":"2","order":"15","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/人字瀑.jpg","E":"113.81123","N":"38.73254"},' +
+        '{"X":"735","Y":"807","Name":"飞龙瀑","Xian":"2","order":"19","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/飞龙瀑01.jpg","E":"113.81318","N":"38.73399"},' +
+
+        '{"X":"696","Y":"771","Name":"白龙瀑","Xian":"2","order":"21","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/白龙瀑01.jpg","E":"113.81360","N":"38.73477"},' +
+        '{"X":"714","Y":"740","Name":"长板旋流","Xian":"2","order":"24","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/长板旋流.jpg","E":"113.81469","N":"38.73460"},' +
+        '{"X":"776","Y":"676","Name":"冷杉","Xian":"2","order":"31","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/松林.jpg","E":"113.81751","N":"38.73520"},' +
+        '{"X":"719","Y":"525","Name":"马趵泉","Xian":"2","order":"45","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/1马趵泉.jpg","E":"113.82635","N":"38.74836"},' +
+        '{"X":"415","Y":"1260","Name":"游客中心","Xian":"9","order":"1","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/游客中心改造后.JPG","E":"113.79655","N":"38.72041"},' +
+        '{"X":"460","Y":"1187","Name":"大门","Xian":"9","order":"1","type":"spot","URL":"articlex.aspx?t=1&id=2179","IMG":"pics/大门.jpg","E":"113.79681","N":"38.72040"},' +
+
+        //线路1
+        '{"X":"398","Y":"1027","Name":"线路1_1","Xian":"1","order":"1","type":"road","E":"113.80333","N":"38.73803"},' +
+        '{"X":"414","Y":"1012","Name":"线路1_2","Xian":"1","order":"2","type":"road","E":"113.80340","N":"38.73818"},' +
+        '{"X":"410","Y":"994","Name":"线路1_3","Xian":"1","order":"3","type":"road","E":"113.80341","N":"38.73833"},' +
+        '{"X":"398","Y":"986","Name":"线路1_4","Xian":"1","order":"4","type":"road","E":"113.80344","N":"38.73846"},' +
+        '{"X":"398","Y":"974","Name":"线路1_5","Xian":"1","order":"5","type":"road","E":"113.80347","N":"38.73859"},' +
+        //三潭飞瀑
+        '{"X":"430","Y":"943","Name":"线路1_7","Xian":"1","order":"7","type":"road","E":"113.80369","N":"38.73876"},' +
+        '{"X":"420","Y":"925","Name":"线路1_8","Xian":"1","order":"8","type":"road","E":"113.80424","N":"38.73886"},' +
+        '{"X":"400","Y":"911","Name":"线路1_9","Xian":"1","order":"9","type":"road","E":"113.80493","N":"38.73916"},' +
+        '{"X":"356","Y":"889","Name":"线路1_10","Xian":"1","order":"10","type":"road","E":"113.80545","N":"38.73924"},' +
+        //寄生树
+        '{"X":"375","Y":"847","Name":"线路1_12","Xian":"1","order":"12","type":"road","E":"113.80795","N":"38.73954"},' +
+        '{"X":"369","Y":"835","Name":"线路1_13","Xian":"1","order":"13","type":"road","E":"113.80804","N":"38.74128"},' +
+        '{"X":"344","Y":"828","Name":"线路1_14","Xian":"1","order":"14","type":"road","E":"113.80829","N":"38.74154"},' +
+        '{"X":"333","Y":"806","Name":"线路1_15","Xian":"1","order":"15","type":"road","E":"113.81166","N":"38.74160"},' +
+        //龙潭瀑
+        '{"X":"354","Y":"746","Name":"线路1_17","Xian":"1","order":"17","type":"road","E":"113.81305","N":"38.74333"},' +
+        '{"X":"338","Y":"733","Name":"线路1_17","Xian":"1","order":"18","type":"road","E":"113.81444","N":"38.74506"},' +
+        '{"X":"314","Y":"731","Name":"线路1_17","Xian":"1","order":"19","type":"road","E":"113.81584","N":"38.74679"},' +
+        '{"X":"311","Y":"721","Name":"线路1_17","Xian":"1","order":"20","type":"road","E":"113.81589","N":"38.74682"},' +
+        '{"X":"332","Y":"705","Name":"线路1_17","Xian":"1","order":"21","type":"road","E":"113.81594","N":"38.74685"},' +
+        '{"X":"362","Y":"702","Name":"线路1_17","Xian":"1","order":"22","type":"road","E":"113.81599","N":"38.74689"},' +
+        '{"X":"395","Y":"709","Name":"线路1_17","Xian":"1","order":"23","type":"road","E":"113.81603","N":"38.74689"},' +
+        '{"X":"392","Y":"696","Name":"线路1_17","Xian":"1","order":"24","type":"road","E":"113.81607","N":"38.74689"},' +
+        '{"X":"393","Y":"687","Name":"线路1_17","Xian":"1","order":"25","type":"road","E":"113.81611","N":"38.74689"},' +
+        //翠云亭
+        '{"X":"415","Y":"684","Name":"线路1_17","Xian":"1","order":"26","type":"road","E":"113.81614","N":"38.74715"},' +
+        '{"X":"420","Y":"677","Name":"线路1_17","Xian":"1","order":"27","type":"road","E":"113.81632","N":"38.74732"},' +
+        '{"X":"401","Y":"666","Name":"线路1_17","Xian":"1","order":"28","type":"road","E":"113.81650","N":"38.74750"},' +
+        '{"X":"400","Y":"658","Name":"线路1_17","Xian":"1","order":"29","type":"road","E":"113.81664","N":"38.74802"},' +
+        '{"X":"424","Y":"640","Name":"线路1_17","Xian":"1","order":"30","type":"road","E":"113.81679","N":"38.74855"},' +
+        '{"X":"441","Y":"619","Name":"线路1_17","Xian":"1","order":"31","type":"road","E":"113.81720","N":"38.74909"},' +
+        '{"X":"433","Y":"597","Name":"线路1_17","Xian":"1","order":"32","type":"road","E":"113.81761","N":"38.74964"},' +
+        //红枫林
+        '{"X":"398","Y":"581","Name":"线路1_17","Xian":"1","order":"33","type":"road","E":"113.81786","N":"38.74980"},' +
+        '{"X":"404","Y":"547","Name":"线路1_17","Xian":"1","order":"34","type":"road","E":"113.81812","N":"38.74997"},' +//
+        '{"X":"401","Y":"526","Name":"线路1_17","Xian":"1","order":"35","type":"road","E":"113.81847","N":"38.75009"},' +
+        '{"X":"410","Y":"504","Name":"线路1_17","Xian":"1","order":"36","type":"road","E":"113.81883","N":"38.75022"},' +
+        '{"X":"431","Y":"486","Name":"线路1_17","Xian":"1","order":"37","type":"road","E":"113.81919","N":"38.75035"},' +//
+
+        '{"X":"492","Y":"467","Name":"线路1_17","Xian":"1","order":"38","type":"road","E":"113.82020","N":"38.75094"},' +
+        '{"X":"507","Y":"460","Name":"线路1_17","Xian":"1","order":"39","type":"road","E":"113.82121","N":"38.75154"},' +//
+        '{"X":"513","Y":"449","Name":"线路1_17","Xian":"1","order":"40","type":"road","E":"113.82185","N":"38.75139"},' +
+        '{"X":"530","Y":"449","Name":"线路1_17","Xian":"1","order":"41","type":"road","E":"113.82249","N":"38.75125"},' +//
+        '{"X":"577","Y":"470","Name":"线路1_17","Xian":"1","order":"42","type":"road","E":"113.82304","N":"38.75121"},' +
+        //小卖铺
+        '{"X":"597","Y":"466","Name":"线路1_17","Xian":"1","order":"43","type":"road","E":"113.82360","N":"38.75118"},' +
+        '{"X":"623","Y":"487","Name":"线路1_17","Xian":"1","order":"44","type":"road","E":"113.82469","N":"38.75102"},' +
+        '{"X":"667","Y":"477","Name":"线路1_17","Xian":"1","order":"45","type":"road","E":"113.82530","N":"38.75047"},' +
+        '{"X":"698","Y":"453","Name":"线路1_17","Xian":"1","order":"46","type":"road","E":"113.82584","N":"38.75023"},' +
+        '{"X":"711","Y":"438","Name":"线路1_17","Xian":"1","order":"47","type":"road","E":"113.82610","N":"38.74967"},' +
+        //山顶广场
+        '{"X":"733","Y":"433","Name":"线路1_17","Xian":"1","order":"48","type":"road","E":"113.82658","N":"38.74926"},' +
+        '{"X":"741","Y":"404","Name":"线路1_17","Xian":"1","order":"49","type":"road","E":"113.82695","N":"38.74936"},' +
+        '{"X":"756","Y":"389","Name":"线路1_17","Xian":"1","order":"50","type":"road","E":"113.82733","N":"38.74946"},' +
+        '{"X":"743","Y":"378","Name":"线路1_17","Xian":"1","order":"51","type":"road","E":"113.82771","N":"38.74957"},' +
+        //岔路口
+        '{"X":"704","Y":"374","Name":"线路1_17","Xian":"1","order":"52","type":"road","E":"113.82931","N":"38.75216"},' +
+        '{"X":"685","Y":"366","Name":"线路1_17","Xian":"1","order":"53","type":"road","E":"113.82711","N":"38.75387"},' +
+        '{"X":"673","Y":"352","Name":"线路1_17","Xian":"1","order":"54","type":"road","E":"113.82599","N":"38.75564"},' +
+        '{"X":"658","Y":"348","Name":"线路1_17","Xian":"1","order":"55","type":"road","E":"113.82490","N":"38.75646"},' +
+        //阎锡山工事群
+        '{"X":"606","Y":"358","Name":"线路1_17","Xian":"1","order":"57","type":"road","E":"113.82432","N":"38.75700"},' +
+        '{"X":"593","Y":"355","Name":"线路1_17","Xian":"1","order":"58","type":"road","E":"113.82475","N":"38.75715"},' +
+        '{"X":"573","Y":"349","Name":"线路1_17","Xian":"1","order":"59","type":"road","E":"113.82457","N":"38.75726"},' +
+        '{"X":"556","Y":"353","Name":"线路1_17","Xian":"1","order":"60","type":"road","E":"113.82439","N":"38.75737"},' +
+        '{"X":"543","Y":"350","Name":"线路1_17","Xian":"1","order":"61","type":"road","E":"113.82421","N":"38.75748"},' +
+        '{"X":"534","Y":"343","Name":"线路1_17","Xian":"1","order":"62","type":"road","E":"113.82412","N":"38.75767"},' +
+        //驼梁服务区
+        '{"X":"534","Y":"343","Name":"线路1_17","Xian":"1","order":"64","type":"road","E":"113.82408","N":"38.75793"},' +
+        '{"X":"559","Y":"329","Name":"线路1_17","Xian":"1","order":"65","type":"road","E":"113.82413","N":"38.75800"},' +
+        '{"X":"586","Y":"324","Name":"线路1_17","Xian":"1","order":"66","type":"road","E":"113.82418","N":"38.75807"},' +
+        '{"X":"611","Y":"323","Name":"线路1_17","Xian":"1","order":"67","type":"road","E":"113.82422","N":"38.75814"},' +
+        '{"X":"628","Y":"318","Name":"线路1_17","Xian":"1","order":"68","type":"road","E":"113.82427","N":"38.75821"},' +
+        //驼峰
+        '{"X":"625","Y":"292","Name":"线路1_17","Xian":"1","order":"70","type":"road","E":"113.82432","N":"38.75829"},' +
+
+
+        //云顶草原
+        //线路2开始
+        //检票口
+        '{"X":"759","Y":"1037","Name":"线路2_17","Xian":"2","order":"2","type":"road","E":"113.79975","N":"38.72587"},' +
+        '{"X":"759","Y":"1037","Name":"线路2_17","Xian":"2","order":"2","type":"road","E":"113.80445","N":"38.72840"},' +
+        '{"X":"770","Y":"1022","Name":"线路2_17","Xian":"2","order":"3","type":"road","E":"113.80516","N":"38.73006"},' +
+        '{"X":"788","Y":"1011","Name":"线路2_17","Xian":"2","order":"4","type":"road","E":"113.80588","N":"38.72946"},' +
+        //一帆风顺
+        '{"X":"804","Y":"1004","Name":"线路2_17","Xian":"2","order":"5","type":"road","E":"113.80801","N":"38.73023"},' +
+        '{"X":"813","Y":"988","Name":"线路2_17","Xian":"2","order":"6","type":"road","E":"113.80827","N":"38.73108"},' +
+        '{"X":"811","Y":"967","Name":"线路2_17","Xian":"2","order":"7","type":"road","E":"113.80849","N":"38.73234"},' +
+        '{"X":"790","Y":"946","Name":"线路2_17","Xian":"2","order":"8","type":"road","E":"113.80949","N":"38.73316"},' +
+        //古树三潭
+        '{"X":"759","Y":"930","Name":"线路2_17","Xian":"2","order":"10","type":"road","E":"113.81088","N":"38.73249"},' +
+        //夏日冰瀑
+        '{"X":"759","Y":"930","Name":"线路2_17","Xian":"2","order":"12","type":"road","E":"113.81096","N":"38.73250"},' +
+        '{"X":"750","Y":"914","Name":"线路2_17","Xian":"2","order":"13","type":"road","E":"113.81105","N":"38.73251"},' +
+        '{"X":"749","Y":"891","Name":"线路2_17","Xian":"2","order":"14","type":"road","E":"113.81114","N":"38.73252"},' +
+        //人字瀑
+        '{"X":"766","Y":"851","Name":"线路2_17","Xian":"2","order":"16","type":"road","E":"113.81171","N":"38.73290"},' +
+        '{"X":"767","Y":"834","Name":"线路2_17","Xian":"2","order":"17","type":"road","E":"113.81220","N":"38.73326"},' +
+        '{"X":"756","Y":"816","Name":"线路2_17","Xian":"2","order":"18","type":"road","E":"113.81269","N":"38.73362"},' +
+        //飞龙瀑
+        '{"X":"711","Y":"792","Name":"线路2_17","Xian":"2","order":"20","type":"road","E":"113.81348","N":"38.73447"},' +
+        //白龙瀑
+        '{"X":"699","Y":"753","Name":"线路2_17","Xian":"2","order":"22","type":"road","E":"113.81402","N":"38.73509"},' +
+        '{"X":"706","Y":"741","Name":"线路2_17","Xian":"2","order":"23","type":"road","E":"113.81435","N":"38.73484"},' +
+        //长版旋流
+        '{"X":"742","Y":"742","Name":"线路2_17","Xian":"2","order":"25","type":"road","E":"113.81452","N":"38.73462"},' +
+        '{"X":"760","Y":"737","Name":"线路2_17","Xian":"2","order":"26","type":"road","E":"113.81469","N":"38.73441"},' +
+        '{"X":"764","Y":"727","Name":"线路2_17","Xian":"2","order":"27","type":"road","E":"113.81508","N":"38.73416"},' +
+        '{"X":"760","Y":"706","Name":"线路2_17","Xian":"2","order":"28","type":"road","E":"113.81547","N":"38.73391"},' +
+        '{"X":"776","Y":"701","Name":"线路2_17","Xian":"2","order":"29","type":"road","E":"113.81586","N":"38.73366"},' +
+        '{"X":"786","Y":"691","Name":"线路2_17","Xian":"2","order":"30","type":"road","E":"113.81668","N":"38.73443"},' +
+        //冷杉
+        '{"X":"757","Y":"673","Name":"线路2_17","Xian":"2","order":"32","type":"road","E":"113.81828","N":"38.73620"},' +
+        '{"X":"728","Y":"676","Name":"线路2_17","Xian":"2","order":"33","type":"road","E":"113.82153","N":"38.73759"},' +
+        '{"X":"711","Y":"670","Name":"线路2_17","Xian":"2","order":"34","type":"road","E":"113.82356","N":"38.73880"},' +
+        '{"X":"706","Y":"649","Name":"线路2_17","Xian":"2","order":"35","type":"road","E":"113.82500","N":"38.74044"},' +
+        '{"X":"720","Y":"617","Name":"线路2_17","Xian":"2","order":"36","type":"road","E":"113.82551","N":"38.74284"},' +
+        '{"X":"722","Y":"600","Name":"线路2_17","Xian":"2","order":"37","type":"road","E":"113.82504","N":"38.74386"},' +//冰泉
+        '{"X":"712","Y":"585","Name":"线路2_17","Xian":"2","order":"38","type":"road","E":"113.82487","N":"38.74518"},' +
+        '{"X":"699","Y":"578","Name":"线路2_17","Xian":"2","order":"39","type":"road","E":"113.82473","N":"38.74552"},' +//龙王庙
+        '{"X":"679","Y":"573","Name":"线路2_17","Xian":"2","order":"40","type":"road","E":"113.82461","N":"38.74613"},' +
+        '{"X":"668","Y":"559","Name":"线路2_17","Xian":"2","order":"42","type":"road","E":"113.82571","N":"38.74803"},' +//下山
+        '{"X":"673","Y":"540","Name":"线路2_17","Xian":"2","order":"43","type":"road","E":"113.82525","N":"38.74924"},' +//山顶
+        '{"X":"688","Y":"530","Name":"线路2_17","Xian":"2","order":"44","type":"road","E":"113.82523","N":"38.74832"},' +//索道
+        //马趵泉
+        '{"X":"734","Y":"518","Name":"线路2_17","Xian":"2","order":"46","type":"road","E":"113.82650","N":"38.74849"},' +
+        '{"X":"745","Y":"473","Name":"线路2_17","Xian":"2","order":"47","type":"road","E":"113.82665","N":"38.74862"},' +
+        '{"X":"761","Y":"454","Name":"线路2_17","Xian":"2","order":"48","type":"road","E":"113.82680","N":"38.74876"},' +
+        '{"X":"778","Y":"445","Name":"线路2_17","Xian":"2","order":"49","type":"road","E":"113.82695","N":"38.74889"},' +
+        '{"X":"797","Y":"448","Name":"线路2_17","Xian":"2","order":"50","type":"road","E":"113.82710","N":"38.74903"},' +
+        '{"X":"820","Y":"464","Name":"线路2_17","Xian":"2","order":"51","type":"road","E":"113.82725","N":"38.74916"},' +
+        '{"X":"832","Y":"465","Name":"线路2_17","Xian":"2","order":"52","type":"road","E":"113.82740","N":"38.74930"},' +
+        '{"X":"838","Y":"436","Name":"线路2_17","Xian":"2","order":"53","type":"road","E":"113.82755","N":"38.74943"},' +
+        '{"X":"834","Y":"406","Name":"线路2_17","Xian":"2","order":"54","type":"road","E":"113.82757","N":"38.74945"},' +
+        '{"X":"823","Y":"386","Name":"线路2_17","Xian":"2","order":"55","type":"road","E":"113.82760","N":"38.74947"},' +
+        '{"X":"805","Y":"379","Name":"线路2_17","Xian":"2","order":"56","type":"road","E":"113.82763","N":"38.74950"},' +
+        '{"X":"778","Y":"376","Name":"线路2_17","Xian":"2","order":"57","type":"road","E":"113.82765","N":"38.74952"},' +
+        '{"X":"744","Y":"378","Name":"线路2_17","Xian":"2","order":"58","type":"road","E":"113.82771","N":"38.74957"}' +
+
+        ']';
+
+    //绘制线路
+    function AddXian(lPointX, lPointY) {
+        //alert(1);
+        var c = document.getElementById("myCanvas");
+        var ctx = c.getContext("2d");
+        ctx.strokeStyle = "rgba(225,0,0,0.8)";
+        ctx.fillStyle = 'rgba(225,225,225,0.5)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+
+        var jqJson = eval('(' + jsonString + ')');
+
+        //取得第一条线路
+        var xian1 = new Array(xpnum1);
+        for (var i = 0; i < jqJson.length; i++) {
+            if (jqJson[i].Xian == "1") {
+                xian1[jqJson[i].order] = jqJson[i];
+            }
+        }
+        ctx.moveTo(GetX(xian1[1].X, lPointX), GetY(xian1[1].Y, lPointY));
+
+        for (var j = 0; j < xian1.length; j++) {
+            try {
+                ctx.lineTo(GetX(xian1[j].X, lPointX), GetY(xian1[j].Y, lPointY));
+            } catch (ex) { }
+
+        }
+        ctx.stroke();
+        //线路2
+        var xian2 = new Array(xpnum2);
+        for (var i = 0; i < jqJson.length; i++) {
+            if (jqJson[i].Xian == "2") {
+                xian2[jqJson[i].order] = jqJson[i];
+            }
+        }
+        ctx.moveTo(GetX(xian2[1].X, lPointX), GetY(xian2[1].Y, lPointY));
+        for (var j = 0; j < xian2.length; j++) {
+            try {
+                ctx.lineTo(GetX(xian2[j].X, lPointX), GetY(xian2[j].Y, lPointY));
+            } catch (ex) { }
+
+        }
+        ctx.stroke();
+    }
+
+    //手指点击的坐标
+    function PClick(PointX, PointY, lPointX, lPointY) {
+
+        var jqJson = eval('(' + jsonString + ')');
+        //alert(jqJson);
+        for (var i = 0; i < jqJson.length; i++) {
+            //var chaX = (PointX/bili + parseInt(lPointX)) - parseInt(jqJson[i].X);
+            //var chaY = (PointY/bili + parseInt(lPointY)) - parseInt(jqJson[i].Y);
+            var chaX = (parseInt(PointX) + parseInt(lPointX)) * bili - parseInt(jqJson[i].X);
+            var chaY = (parseInt(PointY) + parseInt(lPointY)) * bili - parseInt(jqJson[i].Y);
+            if (chaX <= 15 && chaX >= -15 && chaY <= 15 && chaY >= -15) {
+                if (jqJson[i].type == "spot") {
+                    //layer.msg('你点击了[' + jqJson[i].Name + ']');
+                    layer.open({
+                        type: 1,
+                        skin: 'layui-layer-rim', //加上边框
+                        area: ['16rem', '26rem'], //宽高
+                        content: '<a href="' + jqJson[i].URL + '"><img src="' + jqJson[i].IMG + '" style="width:100%;height:95%;" /></a><br/>' + jqJson[i].Name + '|语音讲解',
+                        title: ''
+                    });
+                }
+            }
+        }
+        //alert(12);
+        //宠物
+        //$('#lclick').text('PointX:' + PointX + ',PointY:' + PointY + ',lPointX:' + lPointX + ',lPointY:' + lPointY + ',bili:' + bili);
+        //alert(json2[0].X);
+    }
+
+
+
+    //添加标注
+    function AddDian(lPointX, lPointY) {
+        var x = parseInt(200 / bili) - parseInt(lPointX / bili);
+        var y = parseInt(200 / bili) - parseInt(lPointY / bili);
+        //$('#moveR').text('X:' + x + 'Y:' + y);
+        var c = document.getElementById("myCanvas");
+        var cxt = c.getContext("2d");
+        cxt.fillStyle = "#0000FF";
+        cxt.beginPath();
+        cxt.arc(x, y, 15, 0, Math.PI * 2, true);
+        cxt.closePath();
+        cxt.fill();
+    }
+
+    //坐标 对比 坐标
+    //找到最近点的景点 算出距离
+    //顶点 和像素的比例
+    //找到最近点的road节点。划到这个节点。
+    //确定像素
+
+    var ShowXianlu = 1;
+    var ShowIndex = 1;
+    //重置中心
+    function ShowCenter(dd) {
+        if (dd == '-') bili = bili + 0.1;
+        if (dd == '+') bili = bili - 0.1;
+        if (dd == "1") bili = 1;
+        if (bili >= 1.9) bili = 1.9;
+        if (bili <= 0.5) bili = 0.5;
+        personCenter = true;
+        Draw();
+    }
+    //移动到下一个景点
+    function MoveNext() {
+        ShowIndex++;
+        if (ShowXianlu == 1) {
+            if (ShowIndex >= (xpnum1 + 1)) {
+                ShowIndex = 0;
+                ShowXianlu = 2;
+            }
+            else if (ShowIndex <= 0) {
+                ShowIndex = xpnum2;
+                ShowXianlu = 2;
+            }
+        } else if (ShowXianlu == 2) {
+            if (ShowIndex >= (xpnum2 + 1)) {
+                ShowIndex = 0;
+                ShowXianlu = 1;
+            }
+            else if (ShowIndex <= 0) {
+                ShowIndex = xpnum1;
+                ShowXianlu = 1;
+            }
+        }
+
+        personCenter = true;
+        Draw();
+    }
+    //移动上一个景点
+    function MovePrve() {
+        ShowIndex--
+        if (ShowXianlu == 1) {
+            if (ShowIndex >= (xpnum1 + 1)) {
+                ShowIndex = 0;
+                ShowXianlu = 2;
+            }
+            else if (ShowIndex <= 0) {
+                ShowIndex = xpnum2;
+                ShowXianlu = 2;
+            }
+        } else if (ShowXianlu == 2) {
+            if (ShowIndex >= (xpnum2 + 1)) {
+                ShowIndex = 0;
+                ShowXianlu = 1;
+            }
+            else if (ShowIndex <= 0) {
+                ShowIndex = xpnum1;
+                ShowXianlu = 1;
+            }
+        }
+        personCenter = true;
+        Draw();
+    }
+
+    function ShowPerson() {
+        //阎锡山工事
+        //ShowXianlu = 0;
+        //ShowIndex = 2;
+        //线路1
+        //ShowXianlu = 1;
+        //ShowIndex = 56;
+
+
+
+        //alert(ShowIndex);
+        //这个方法需要重写
+        var jqJson = eval('(' + jsonString + ')');
+        //线路1
+        if (ShowXianlu == 1) {
+            var xian1 = new Array(xpnum1);
+            for (var i = 0; i < jqJson.length; i++) {
+                if (jqJson[i].Xian == "1") {
+                    xian1[jqJson[i].order] = jqJson[i];
+                }
+            }
+            var c = document.getElementById("myCanvas");
+            var ctx = c.getContext("2d");
+            var x = parseInt(xian1[ShowIndex].X / bili) - 16 - parseInt(lPointX);
+            var y = parseInt(xian1[ShowIndex].Y / bili) - 16 - parseInt(lPointY);
+            ctx.drawImage(imgRen, x, y, 32, 32);
+            if (personCenter) {
+                var showX = xian1[ShowIndex].X / bili - c.width / 2;
+                var showY = xian1[ShowIndex].Y / bili - c.height / 2;
+                lPointX = showX;
+                lPointY = showY;
+                cPointX = lPointX;
+                cPointY = lPointY;
+            }
+            //alert(JSON.stringify(xian1[ShowIndex]));
+            //alert("X:" + x + ",Y:" + y);
+        }
+        //线路2    重新洗
+        if (ShowXianlu == 2) {
+            var xian2 = new Array(xpnum1);
+            for (var i = 0; i < jqJson.length; i++) {
+                if (jqJson[i].Xian == "2") {
+                    xian2[jqJson[i].order] = jqJson[i];
+                }
+            }
+            var c = document.getElementById("myCanvas");
+            var ctx = c.getContext("2d");
+            var x = parseInt(xian2[ShowIndex].X / bili) - 16 - parseInt(lPointX);
+            var y = parseInt(xian2[ShowIndex].Y / bili) - 16 - parseInt(lPointY);
+            ctx.drawImage(imgRen, x, y, 32, 32);
+            if (personCenter) {
+                var showX = xian2[ShowIndex].X / bili - c.width / 2;
+                var showY = xian2[ShowIndex].Y / bili - c.height / 2;
+                lPointX = showX;
+                lPointY = showY;
+                cPointX = lPointX;
+                cPointY = lPointY;
+            }
+        }
+
+        //不走线路区分 直接对比画点>???????????????
+        if (ShowXianlu == 0) {
+            var c = document.getElementById("myCanvas");
+            var ctx = c.getContext("2d");
+            var jqJson = eval('(' + jsonString + ')');
+            var x = parseInt(jqJson[ShowIndex].X / bili) - 16 - parseInt(lPointX);
+            var y = parseInt(jqJson[ShowIndex].Y / bili) - 16 - parseInt(lPointY);
+            ctx.drawImage(imgRen, x, y, 32, 32);
+            if (personCenter) {
+                var showX = jqJson[ShowIndex].X / bili - c.width / 2;
+                var showY = jqJson[ShowIndex].Y / bili - c.height / 2;
+                lPointX = showX;
+                lPointY = showY;
+                cPointX = lPointX;
+                cPointY = lPointY;
+            }
+
+            //这里计算的貌似不对啊
+            //alert(JSON.stringify(jqJson[ShowIndex]));
+            //alert("X:" + x + ",Y:" + y);
+        }
+    }
+
+    //添加人物
+    function AddRen(lPointX, lPointY, ctx) {
+        //alert(1);
+        var xx = 0;
+        var yy = 0;
+        var x = parseInt(xx / bili) - 16 - parseInt(lPointX);
+        var y = parseInt(yy / bili) - 16 - parseInt(lPointY);
+        //alert(2);
+        //var c = document.getElementById("myCanvas");
+        //var cxt = c.getContext("2d");
+
+        //alert(3);
+        //alert(imgRen);
+        ctx.drawImage(imgRen, x, y, 32, 32);
+        //alert(4);
+    }
+
+
+    //获取X
+    function GetX(pointx, lPointX) {
+        var x = parseInt(pointx / bili) - parseInt(lPointX / bili);
+        //$('#moveY').text('X:' + x);
+        return x;
+    }
+    function GetY(pointy, lPointY) {
+
+        var y = parseInt(pointy / bili) - parseInt(lPointY / bili);
+        //alert(y);
+        //$('#moveY').text('Y:' + pointy + ",LPointY" + lPointY+",YY"+y);
+        return y;
+    }
+
+
+    //获取坐标
+    var position_option = {
+        enableHighAccuracy: true,
+        maximumAge: 30000,
+        timeout: 20000
+    };
+    //持续获取坐标 黑道奶爸
+    navigator.geolocation.watchPosition(getPositionSuccess, getPositionError, position_option);
+
+    function getPositionSuccess(position) {
+        var lat = position.coords.latitude;
+        var lng = position.coords.longitude;
+
+        //确定一下最近的边界。
+
+
+        //alert("您所在的位置： 纬度" + lat + "，经度" + lng);
+        //if (typeof position.address !== "undefined") {
+        //    var country = position.address.country;
+        //    var province = position.address.region;
+        //    var city = position.address.city;
+        //    alert(' 您位于 ' + country + province + '省' + city + '市');
+        //}
+        //CalculateShowPersonPoint(lat, lng);
+
+        ShowXianlu = 0;//设置不按线路显示就解决
+        var jqJson = eval('(' + jsonString + ')');
+        var minCha = 9;
+        for (var i = 0; i < jqJson.length; i++) {
+            var chaw = jqJson[i].N - lat;//维度差距
+            var chaj = jqJson[i].E - lng;//经度差距
+            var cha = Math.pow((chaw * chaw + chaj * chaj), 0.5);
+            //alert(cha);
+            if (cha < minCha) {
+                minCha = cha;
+                ShowIndex = i;//这句话为什么有问题啊。
+            }
+        }
+
+        if (lat > 38.9 || lat < 38.6 || lng < 113.7 || lng > 113.9) {
+            if (ShowFanwei == 0) {
+                alert('您所在位置已经远离驼梁景区');
+                ShowFanwei = 1;
+                ShowIndex = -1;
+                ShowXianlu = -1;
+            }
+        }
+        //ShowIndex = 0;
+        Draw();
+
+        //alert(JSON.stringify(jqJson[ShowIndex]));
+        //alert("纬:" + lat + ",经:" + lng);
+    }
+
+    function getPositionError(error) {
+        //switch (error.code) {
+        //    case error.TIMEOUT:
+        //        alert("连接超时，请重试");
+        //        break;
+        //    case error.PERMISSION_DENIED:
+        //        alert("您拒绝了使用位置共享服务，查询已取消");
+        //        break;
+        //    case error.POSITION_UNAVAILABLE:
+        //        alert("获取位置信息失败");
+        //        break;
+        //}
+    }
+
+    //计算坐标最近的点。
+    function CalculateShowPersonPoint(lat, lng) {
+
+        var jqJson = eval('(' + jsonString + ')');
+        var minCha = 9;
+
+        for (var i = 0; i < jqJson.length; i++) {
+            var chaw = jqJson[i].N - lat;//维度差距
+            var chaj = jqJson[i].E - lng;//经度差距
+            var cha = Math.pow((chaw * chaw + chaj * chaj), 0.5);
+            if (cha < minCha) {
+                minCha = cha;
+                ShowIndex = i;
+                //ShowIndex = 2;
+                //alert(i);
+            }
+        }
+        alert(ShowIndex);
+        Draw();
+    }
+</script>
+
+</html>
